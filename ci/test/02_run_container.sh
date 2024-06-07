@@ -16,13 +16,16 @@ if [ -z "$DANGER_RUN_CI_ON_HOST" ]; then
   # System-dependent env vars must be kept as is. So read them from the container.
   docker run --rm "${CI_IMAGE_NAME_TAG}" bash -c "env | grep --extended-regexp '^(HOME|PATH|USER)='" | tee --append "/tmp/env-$USER-$CONTAINER_NAME"
   echo "Creating $CI_IMAGE_NAME_TAG container to run in"
+
   DOCKER_BUILDKIT=1 docker build \
       --file "${BASE_READ_ONLY_DIR}/ci/test_imagefile" \
       --build-arg "CI_IMAGE_NAME_TAG=${CI_IMAGE_NAME_TAG}" \
+      --build-arg "INSTALL_BCC_TRACING_TOOLS=${INSTALL_BCC_TRACING_TOOLS}" \
       --build-arg "FILE_ENV=${FILE_ENV}" \
       --label="${CI_IMAGE_LABEL}" \
       --tag="${CONTAINER_NAME}" \
       "${BASE_READ_ONLY_DIR}"
+
   docker volume create "${CONTAINER_NAME}_ccache" || true
   docker volume create "${CONTAINER_NAME}_depends" || true
   docker volume create "${CONTAINER_NAME}_depends_sources" || true
