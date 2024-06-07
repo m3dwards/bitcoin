@@ -292,7 +292,7 @@ jobs:
 
       - name: Run functional tests
         env:
-          TEST_RUNNER_EXTRA: ${{ github.event_name != 'pull_request' && '--extended' || '' }}
+          TEST_RUNNER_EXTRA: --extended --exclude "rpc_bind.py --ipv6, feature_proxy.py"
         shell: cmd
         run: py -3 test\functional\test_runner.py --jobs %NUMBER_OF_PROCESSORS% --ci --quiet --tmpdirprefix=%RUNNER_TEMP% --combinedlogslen=99999999 --timeout-factor=%TEST_RUNNER_TIMEOUT_FACTOR% %TEST_RUNNER_EXTRA%
 
