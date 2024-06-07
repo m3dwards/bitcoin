@@ -48,36 +48,50 @@ std::vector<CNetAddr> WrappedGetAddrInfo(const std::string& name, bool allow_loo
     ai_hint.ai_protocol = IPPROTO_TCP;
     // We don't care which address family (IPv4 or IPv6) is returned
     ai_hint.ai_family = AF_UNSPEC;
+
     // If we allow lookups of hostnames, use the AI_ADDRCONFIG flag to only
     // return addresses whose family we have an address configured for.
     //
     // If we don't allow lookups, then use the AI_NUMERICHOST flag for
     // getaddrinfo to only decode numerical network addresses and suppress
     // hostname lookups.
-    ai_hint.ai_flags = allow_lookup ? AI_ADDRCONFIG : AI_NUMERICHOST;
+    const int ai_flags = allow_lookup ? AI_ADDRCONFIG : AI_NUMERICHOST;
 
-    addrinfo* ai_res{nullptr};
-    const int n_err{getaddrinfo(name.c_str(), nullptr, &ai_hint, &ai_res)};
-    if (n_err != 0) {
-        return {};
-    }
-
-    // Traverse the linked list starting with ai_trav.
-    addrinfo* ai_trav{ai_res};
     std::vector<CNetAddr> resolved_addresses;
-    while (ai_trav != nullptr) {
-        if (ai_trav->ai_family == AF_INET) {
-            assert(ai_trav->ai_addrlen >= sizeof(sockaddr_in));
-            resolved_addresses.emplace_back(reinterpret_cast<sockaddr_in*>(ai_trav->ai_addr)->sin_addr);
+
+    auto callgetaddrinfo = [&](int flags) -> int {
+        ai_hint.ai_flags = flags;
+        addrinfo* ai_res{nullptr};
+        const int n_err{getaddrinfo(name.c_str(), nullptr, &ai_hint, &ai_res)};
+        if (n_err != 0) {
+            return n_err;
         }
-        if (ai_trav->ai_family == AF_INET6) {
-            assert(ai_trav->ai_addrlen >= sizeof(sockaddr_in6));
-            const sockaddr_in6* s6{reinterpret_cast<sockaddr_in6*>(ai_trav->ai_addr)};
-            resolved_addresses.emplace_back(s6->sin6_addr, s6->sin6_scope_id);
+
+        // Traverse the linked list of addrinfo structures
+        addrinfo* ai_trav{ai_res};
+        while (ai_trav != nullptr) {
+            if (ai_trav->ai_family == AF_INET) {
+                assert(ai_trav->ai_addrlen >= sizeof(sockaddr_in));
+                resolved_addresses.emplace_back(reinterpret_cast<sockaddr_in*>(ai_trav->ai_addr)->sin_addr);
+            }
+            if (ai_trav->ai_family == AF_INET6) {
+                assert(ai_trav->ai_addrlen >= sizeof(sockaddr_in6));
+                const sockaddr_in6* s6{reinterpret_cast<sockaddr_in6*>(ai_trav->ai_addr)};
+                resolved_addresses.emplace_back(s6->sin6_addr, s6->sin6_scope_id);
+            }
+            ai_trav = ai_trav->ai_next;
         }
-        ai_trav = ai_trav->ai_next;
+        freeaddrinfo(ai_res);
+        return 0;
+    };
+
+    const int n_err{callgetaddrinfo(ai_flags)};
+
+    // AI_ADDRCONFIG on some systems may exclude loopback only addresses
+    // If first lookup failed we perform a second lookup without AI_ADDRCONFIG
+    if (n_err != 0 && (ai_flags & AI_ADDRCONFIG) == AI_ADDRCONFIG) {
+        callgetaddrinfo(ai_flags & ~AI_ADDRCONFIG);
     }
-    freeaddrinfo(ai_res);
 
     return resolved_addresses;
 }
