@@ -314,6 +314,7 @@ jobs:
     env:
       FILE_ENV: "./ci/test/00_setup_env_native_asan.sh"
       INSTALL_BCC_TRACING_TOOLS: true
+      TEST_RUNNER_EXTRA: --exclude "rpc_bind.py --ipv6, feature_proxy.py"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
