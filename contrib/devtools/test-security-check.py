@@ -36,6 +36,7 @@ def env_flags() -> list[str]:
     flags: list[str] = []
     for var in ['CXXFLAGS', 'CPPFLAGS', 'LDFLAGS']:
         flags += filter(None, os.environ.get(var, '').split(' '))
+    print(flags)
     return flags
 
 def call_security_check(cxx: str, source: str, executable: str, options) -> tuple:
