@@ -89,7 +89,7 @@ std::vector<CNetAddr> WrappedGetAddrInfo(const std::string& name, bool allow_loo
 
     // AI_ADDRCONFIG on some systems may exclude loopback only addresses
     // If first lookup failed we perform a second lookup without AI_ADDRCONFIG
-    if (n_err != 0 && (ai_flags & AI_ADDRCONFIG) == AI_ADDRCONFIG) {
+    if (n_err != EAI_ADDRFAMILY && (ai_flags & AI_ADDRCONFIG) == AI_ADDRCONFIG) {
         callgetaddrinfo(ai_flags & ~AI_ADDRCONFIG);
     }
 
