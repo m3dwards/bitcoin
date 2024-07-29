@@ -12,9 +12,11 @@ export CI_IMAGE_NAME_TAG="docker.io/ubuntu:24.04"
 if [[ "${INSTALL_BCC_TRACING_TOOLS}" == "true" ]]; then
   # Required for USDT functional tests to run
   BPFCC_PACKAGE="bpfcc-tools linux-headers-$(uname --kernel-release)"
+
   export CI_CONTAINER_CAP="--privileged -v /sys/kernel:/sys/kernel:rw"
 else
   BPFCC_PACKAGE=""
+
   export CI_CONTAINER_CAP="--cap-add SYS_PTRACE"  # If run with (ASan + LSan), the container needs access to ptrace (https://github.com/google/sanitizers/issues/764)
 fi
 
