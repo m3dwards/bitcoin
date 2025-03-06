@@ -29,6 +29,7 @@ class WalletStartupTest(BitcoinTestFramework):
         self.start_nodes()
 
     def run_test(self):
+        c = 1 / 0;
         self.log.info('Should start without any wallets')
         assert_equal(self.nodes[0].listwallets(), [])
         assert_equal(self.nodes[0].listwalletdir(), {'wallets': []})
