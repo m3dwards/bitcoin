@@ -252,11 +252,6 @@ jobs:
           Get-ChildItem -Filter "bin\Release\*.exe" | ForEach-Object {
             $exeName = $_.Name
 
-            # Skip as they currently do not have manifests
-            if ($exeName -eq "fuzz.exe" -or $exeName -eq "bench_bitcoin.exe" -or $exeName -eq "test_bitcoin-qt.exe") {
-              Write-Host "Skipping $exeName (no manifest present)"
-              return
-            }
 
             Write-Host "Checking $exeName"
             & mt.exe -nologo -inputresource:$_.FullName -validate_manifest
@@ -391,11 +386,6 @@ jobs:
           Get-ChildItem -Filter "bin\*.exe" | ForEach-Object {
             $exeName = $_.Name
 
-            # Skip as they currently do not have manifests
-            if ($exeName -eq "fuzz.exe" -or $exeName -eq "bench_bitcoin.exe") {
-              Write-Host "Skipping $exeName (no manifest present)"
-              return
-            }
 
             Write-Host "Checking $exeName"
             & mt.exe -nologo -inputresource:$_.FullName -validate_manifest
