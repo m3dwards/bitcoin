@@ -192,8 +192,9 @@ jobs:
           arch: x64
 
       - name: Get tool information
-        shell: pwsh
+        shell: pwsh -Command "$PSVersionTable; $PSNativeCommandUseErrorActionPreference = $true; $ErrorActionPreference = 'Stop'; & '{0}'"
         run: |
+          curl.exe -badoption
           cmake -version | Tee-Object -FilePath "cmake_version"
           Write-Output "---"
           msbuild -version | Tee-Object -FilePath "msbuild_version"
