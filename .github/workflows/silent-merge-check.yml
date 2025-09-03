@@ -24,6 +24,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake build-essential
 
+      - name: Set up GitHub CLI
+        run: gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
+
       - name: List open PRs
         id: prs
         run: |
