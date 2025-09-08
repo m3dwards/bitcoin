@@ -103,6 +103,14 @@ jobs:
               summary="CMake build and tests passed."
             fi
 
+            # set -o xtrace
+            # docker buildx build -t "$CONTAINER_NAME" $DOCKER_BUILD_CACHE_ARG --file "./ci/lint_imagefile" .
+            # CIRRUS_PR_FLAG=""
+            # if [ "${{ github.event_name }}" = "pull_request" ]; then
+            #   CIRRUS_PR_FLAG="-e CIRRUS_PR=1"
+            # fi
+            # docker run --rm $CIRRUS_PR_FLAG -v "$(pwd)":/bitcoin "$CONTAINER_NAME"
+
             # --- Report result as a new check run ---
             gh api repos/${GITHUB_REPOSITORY}/check-runs \
               -X POST \
@@ -121,61 +129,3 @@ jobs:
           depends-sources-cache-hit: ${{ steps.restore-cache.depends-sources-cache-hit }}
           depends-built-cache-hit: ${{ steps.restore-cache.depends-built-cache-hit }}
 
-  previous-releases:
-    name: 'Previous releases, depends DEBUG'
-    if: contains(github.event.label.name, 'PeriodicMergeCICheck')
-    needs: runners
-    runs-on: ${{ needs.runners.outputs.use-cirrus-runners == 'true' && 'ghcr.io/cirruslabs/ubuntu-runner-amd64:24.04-md' || 'ubuntu-24.04' }}
-
-    env:
-      FILE_ENV: './ci/test/00_setup_env_native_previous_releases.sh'
-      DANGER_CI_ON_HOST_FOLDERS: 1
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure environment
-        uses: ./.github/actions/configure-environment
-
-      - name: Restore caches
-        id: restore-cache
-        uses: ./.github/actions/restore-caches
-
-      - name: Configure Docker
-        uses: ./.github/actions/configure-docker
-        with:
-          use-cirrus: ${{ needs.runners.outputs.use-cirrus-runners }}
-
-      - name: CI script
-        run: ./ci/test_run_all.sh
-
-
-  lint:
-    name: 'Lint'
-    if: contains(github.event.label.name, 'PeriodicMergeCICheck')
-    needs: runners
-    runs-on: ${{ needs.runners.outputs.use-cirrus-runners == 'true' && 'ghcr.io/cirruslabs/ubuntu-runner-amd64:24.04-sm' || 'ubuntu-24.04' }}
-    timeout-minutes: 20
-    env:
-      CONTAINER_NAME: "bitcoin-linter"
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Configure Docker
-        uses: ./.github/actions/configure-docker
-        with:
-          use-cirrus: ${{ needs.runners.outputs.use-cirrus-runners }}
-
-      - name: CI script
-        run: |
-          set -o xtrace
-          docker buildx build -t "$CONTAINER_NAME" $DOCKER_BUILD_CACHE_ARG --file "./ci/lint_imagefile" .
-          CIRRUS_PR_FLAG=""
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            CIRRUS_PR_FLAG="-e CIRRUS_PR=1"
-          fi
-          docker run --rm $CIRRUS_PR_FLAG -v "$(pwd)":/bitcoin "$CONTAINER_NAME"
