@@ -123,9 +123,3 @@ jobs:
 
           done
 
-      - name: Save caches
-        uses: ./.github/actions/save-caches
-        with:
-          depends-sources-cache-hit: ${{ steps.restore-cache.depends-sources-cache-hit }}
-          depends-built-cache-hit: ${{ steps.restore-cache.depends-built-cache-hit }}
-
