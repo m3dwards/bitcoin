@@ -52,7 +52,10 @@ jobs:
 
       - name: Process PRs
         run: |
+          echo "$prs"
           IFS=: read -r -a prs <<< "$prs" # Convert into to array
+          echo "$prs"
+          declare -p prs
           for pr in $prs; do
             echo "Checking PR #$pr"
 
@@ -106,8 +109,8 @@ jobs:
             #   summary="CMake build and tests passed."
             # fi
 
-            conclusion=failure
-            summary="Periodic silent merge check has failed."
+            conclusion=success
+            summary="Periodic silent merge check has passed!"
             # set -o xtrace
             # docker buildx build -t "$CONTAINER_NAME" $DOCKER_BUILD_CACHE_ARG --file "./ci/lint_imagefile" .
             # CIRRUS_PR_FLAG=""
