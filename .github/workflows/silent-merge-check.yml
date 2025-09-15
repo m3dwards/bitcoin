@@ -92,9 +92,9 @@ jobs:
               continue
             fi
 
-            # --- Run build/tests ---
-            git fetch origin pull/$pr/head:pr-$pr
-            git checkout pr-$pr
+            # --- Run build/tests on the actual merge target ---
+            git fetch origin pull/$pr/merge:pr-$pr-merge
+            git checkout pr-$pr-merge
 
             if ! output=$(./ci/test_run_all.sh 2>&1); then
                 echo "PR #$pr CI script failed."
