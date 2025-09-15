@@ -110,7 +110,7 @@ jobs:
             # fi
 
             conclusion=failure
-            summary="Periodic silent merge check has passed!"
+          summary="Periodic silent merge check has passed! \n\n Details of failure: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
             # set -o xtrace
             # docker buildx build -t "$CONTAINER_NAME" $DOCKER_BUILD_CACHE_ARG --file "./ci/lint_imagefile" .
             # CIRRUS_PR_FLAG=""
