@@ -46,7 +46,7 @@ jobs:
         id: prs
         run: |
           echo "Fetching open PRs..."
-          prs=$(gh pr list --state open --json number --jq '.[].number' | tr '\n' ':')
+          prs=$(gh pr list --state open --json number --jq '.[].number' | tr '\n' ':' | sed 's/:$//')
           echo "Found PRs: $prs"
           echo "prs=$prs" >> $GITHUB_ENV
 
@@ -90,22 +90,24 @@ jobs:
             fi
 
             # --- Run build/tests ---
-            git fetch origin pull/$pr/head:pr-$pr
-            git checkout pr-$pr
+            # git fetch origin pull/$pr/head:pr-$pr
+            # git checkout pr-$pr
+            #
+            # ci_failed=false
+            # ./ci/test_run_all.sh || {
+            #     echo "PR #$pr CI script failed."
+            #     ci_failed=true
+            # }
+            # if [ "$ci_failed" = true ]; then
+            #   conclusion=failure
+            #   summary="CMake build or tests failed."
+            # else
+            #   conclusion=success
+            #   summary="CMake build and tests passed."
+            # fi
 
-            ci_failed=false
-            ./ci/test_run_all.sh || {
-                echo "PR #$pr CI script failed."
-                ci_failed=true
-            }
-            if [ "$ci_failed" = true ]; then
-              conclusion=failure
-              summary="CMake build or tests failed."
-            else
-              conclusion=success
-              summary="CMake build and tests passed."
-            fi
-
+            conclusion=failure
+            summary="Periodic silent merge check has failed."
             # set -o xtrace
             # docker buildx build -t "$CONTAINER_NAME" $DOCKER_BUILD_CACHE_ARG --file "./ci/lint_imagefile" .
             # CIRRUS_PR_FLAG=""
@@ -117,11 +119,11 @@ jobs:
             # --- Report result as a new check run ---
             gh api repos/${GITHUB_REPOSITORY}/check-runs \
               -X POST \
-              -F "name=CMake Build & Test" \
+              -F "name=Periodic silent merge check" \
               -F "head_sha=$head_sha" \
               -F "status=completed" \
               -F "conclusion=$conclusion" \
-              -F "output[title]=CMake Build & Test" \
+              -F "output[title]=Periodic silent merge check" \
               -F "output[summary]=$summary"
 
           done
