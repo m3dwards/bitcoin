@@ -126,6 +126,7 @@ jobs:
               -F "head_sha=$head_sha" \
               -F "status=completed" \
               -F "details_url=https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+              -F "external_id=${GITHUB_RUN_ID}" \
               -F "conclusion=$conclusion" \
               -F "output[title]=Periodic silent merge check" \
               -F "output[summary]=$summary"
