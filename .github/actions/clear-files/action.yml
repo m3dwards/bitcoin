@@ -9,8 +9,6 @@ runs:
         DEBIAN_FRONTEND: noninteractive
       run: |
         set +e
-        exec > >(awk '{ print strftime("[%Y-%m-%d %H:%M:%S]"), $0 }') \
-             2> >(awk '{ print strftime("[%Y-%m-%d %H:%M:%S]"), $0 }' >&2)
 
         # Skip slow "updating man-db" dpkg step
         echo 'set man-db/auto-update false' | sudo debconf-communicate; sudo dpkg-reconfigure man-db
@@ -34,12 +32,16 @@ runs:
           "/usr/local/lib/node_modules"
         )
 
+        mkdir empty_dir
         for dir in "${DIRS_TO_REMOVE[@]}"; do
           if [ -d "$dir" ]; then
             echo "Removing $dir"
-            time sudo rm -Rf "$dir"
+            du -sh "$dir"
+            sudo time rsync -a --delete empty_dir/ "$dir"
+            du -sh "$dir"
           fi
         done
+        rmdir empty_dir
 
         echo "Disabling swap"
         sudo swapoff -a
