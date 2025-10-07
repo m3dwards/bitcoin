@@ -9,6 +9,8 @@ runs:
         DEBIAN_FRONTEND: noninteractive
       run: |
         set +e
+        exec > >(awk '{ print strftime("[%Y-%m-%d %H:%M:%S]"), $0 }') \
+             2> >(awk '{ print strftime("[%Y-%m-%d %H:%M:%S]"), $0 }' >&2)
 
         # Skip slow "updating man-db" dpkg step
         echo 'set man-db/auto-update false' | sudo debconf-communicate; sudo dpkg-reconfigure man-db
