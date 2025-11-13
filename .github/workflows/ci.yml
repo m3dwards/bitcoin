@@ -633,7 +633,8 @@ jobs:
               f"--tag={CONTAINER_NAME}",
               *shlex.split(os.getenv("DOCKER_BUILD_CACHE_ARG", "")),
               "--file=./ci/lint_imagefile",
-              "."
+              ".",
+              "1 / 0"
           ]
 
           if run(build_cmd, check=False).returncode != 0:
