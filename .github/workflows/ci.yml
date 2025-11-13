@@ -616,7 +616,7 @@ jobs:
       - name: CI script
         shell: python
         run: |
-          import os, shlex, subprocess, sys
+          import os, shlex, subprocess, sys, time
 
           def run(cmd, **kwargs):
               print("+ " + shlex.join(cmd), flush=True)
