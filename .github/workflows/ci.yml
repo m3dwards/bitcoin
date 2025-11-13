@@ -640,7 +640,7 @@ jobs:
           if run(build_cmd, check=False).returncode != 0:
               print(f"Retry building image tag after failure")
               time.sleep(3)
-              run(cmd_build)
+              run(build_cmd)
 
           CIRRUS_PR_FLAG = []
           if '${{ github.event_name }}' == "pull_request":
