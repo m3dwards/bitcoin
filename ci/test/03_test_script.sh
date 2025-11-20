@@ -32,6 +32,9 @@ if [[ "$CONTAINER_NAME" == "ci_native_asan" ]]; then
   ${CI_RETRY_EXE} bash -c "apt-get install --no-install-recommends --no-upgrade -y $PACKAGES"
 fi
 
+echo "Free disk space after asan pacakges:"
+df -h
+
 # What host to compile for. See also ./depends/README.md
 # Tests that need cross-compilation export the appropriate HOST.
 # Tests that run natively guess the host
@@ -85,6 +88,9 @@ elif [ "$RUN_UNIT_TESTS" = "true" ]; then
   fi
 fi
 
+echo "Free disk space after fuzz or unit test data:"
+df -h
+
 if [ "$USE_BUSY_BOX" = "true" ]; then
   echo "Setup to use BusyBox utils"
   # tar excluded for now because it requires passing in the exact archive type in ./depends (fixed in later BusyBox version)
@@ -93,6 +99,9 @@ if [ "$USE_BUSY_BOX" = "true" ]; then
   # Print BusyBox version
   patch --help
 fi
+
+echo "Free disk space after busybox:"
+df -h
 
 # Make sure default datadir does not exist and is never read by creating a dummy file
 if [ "$CI_OS_NAME" == "macos" ]; then
@@ -109,9 +118,16 @@ if [ -z "$NO_DEPENDS" ]; then
   fi
   bash -c "$SHELL_OPTS make $MAKEJOBS -C depends HOST=$HOST $DEP_OPTS LOG=1"
 fi
+
+echo "Free disk space after depends:"
+df -h
+
 if [ "$DOWNLOAD_PREVIOUS_RELEASES" = "true" ]; then
   test/get_previous_releases.py --target-dir "$PREVIOUS_RELEASES_DIR"
 fi
+
+echo "Free disk space after getting previous releases:"
+df -h
 
 BITCOIN_CONFIG_ALL="-DBUILD_BENCH=ON -DBUILD_FUZZ_BINARY=ON"
 if [ -z "$NO_DEPENDS" ]; then
@@ -140,6 +156,8 @@ cmake -S "$BASE_ROOT_DIR" -B "$BASE_BUILD_DIR" "${CMAKE_ARGS[@]}" || (
   cat $(cmake -P "${BASE_ROOT_DIR}/ci/test/GetCMakeLogFiles.cmake")
   false
 )
+echo "Free disk space after cmake config:"
+df -h
 
 # shellcheck disable=SC2086
 cmake --build "${BASE_BUILD_DIR}" "$MAKEJOBS" --target all $GOAL || (
@@ -148,6 +166,13 @@ cmake --build "${BASE_BUILD_DIR}" "$MAKEJOBS" --target all $GOAL || (
   cmake --build "${BASE_BUILD_DIR}" -j1 --target all $GOAL --verbose
   false
 )
+
+echo "Free disk space after cmake build:"
+df -h
+
+du -h "${BASE_BUILD_DIR}"
+
+rm -rf "${BASE_BUILD_DIR}/src"
 
 bash -c "${PRINT_CCACHE_STATISTICS}"
 if [ "$CI" = "true" ]; then
@@ -158,6 +183,7 @@ if [ "$CI" = "true" ]; then
 fi
 du -sh "${DEPENDS_DIR}"/*/
 du -sh "${PREVIOUS_RELEASES_DIR}"
+du -sh "${CCACHE_DIR}"
 
 if [ -n "${CI_LIMIT_STACK_SIZE}" ]; then
   ulimit -s 512
@@ -180,6 +206,9 @@ if [ "$RUN_UNIT_TESTS" = "true" ]; then
     "${MAKEJOBS}" \
     --timeout $(( TEST_RUNNER_TIMEOUT_FACTOR * 60 ))
 fi
+
+DISK_SPACE=$(df -h / | awk 'NR==2 {print $4}')
+echo "::notice title=Disk Space before functional tests | Available disk: $DISK_SPACE"
 
 if [ "$RUN_FUNCTIONAL_TESTS" = "true" ]; then
   # parses TEST_RUNNER_EXTRA as an array which allows for multiple arguments such as TEST_RUNNER_EXTRA='--exclude "rpc_bind.py --ipv6"'

@@ -562,6 +562,12 @@ jobs:
 
       - *CHECKOUT
 
+      - name: 'Disk space before cloning'
+        run: |
+          JOB_NAME="${{ matrix.name }}"
+          DISK_SPACE=$(df -h / | awk 'NR==2 {print $4}')
+          echo "::notice title=Disk Space before cloning Job: $JOB_NAME | Available disk: $DISK_SPACE"
+
       - name: Configure environment
         uses: ./.github/actions/configure-environment
 
@@ -585,11 +591,23 @@ jobs:
         # Prevents crashes due to high ASLR entropy
         run: sudo sysctl -w vm.mmap_rnd_bits=28
 
+      - name: 'Disk space before starting CI'
+        run: |
+          JOB_NAME="${{ matrix.name }}"
+          DISK_SPACE=$(df -h / | awk 'NR==2 {print $4}')
+          echo "::notice title=Disk Space before starting ci Job: $JOB_NAME | Available disk: $DISK_SPACE"
+
       - name: CI script
         run: ./ci/test_run_all.sh
 
       - name: Save caches
         uses: ./.github/actions/save-caches
+
+      - name: 'Disk space after CI'
+        run: |
+          JOB_NAME="${{ matrix.name }}"
+          DISK_SPACE=$(df -h / | awk 'NR==2 {print $4}')
+          echo "::notice title=Disk Space after ci Job: $JOB_NAME | Available disk: $DISK_SPACE"
 
   lint:
     name: 'lint'
