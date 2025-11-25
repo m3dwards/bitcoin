@@ -140,6 +140,11 @@ cmake --build "${BASE_BUILD_DIR}" "$MAKEJOBS" --target all $GOAL || (
   false
 )
 
+# Clean up some space - helpful on CI systems with limited disk space such as GHA
+du -sh "${BASE_BUILD_DIR}"
+find "${BASE_BUILD_DIR}" -type d -name CMakeFiles -exec rm -rf {} +
+du -sh "${BASE_BUILD_DIR}"
+
 bash -c "${PRINT_CCACHE_STATISTICS}"
 if [ "$CI" = "true" ]; then
   hit_rate=$(ccache -s | grep "Hits:" | head -1 | sed 's/.*(\(.*\)%).*/\1/')
