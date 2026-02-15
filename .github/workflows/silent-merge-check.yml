@@ -1,0 +1,125 @@
+# Copyright (c) 2023-present The Bitcoin Core developers
+# Distributed under the MIT software license, see the accompanying
+# file COPYING or https://opensource.org/license/mit.
+
+name: Silent Merge Periodic Check
+
+on:
+  schedule:
+    - cron: "0 0 * * 0"  # Sunday 00:00 UTC
+  workflow_dispatch:
+
+jobs:
+  verify-prs:
+    name: 'Verify open PRs for silent merge conflicts'
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      pull-requests: read
+      contents: read
+    env:
+      FILE_ENV: './ci/test/00_setup_env_native_previous_releases.sh'
+      DANGER_CI_ON_HOST_FOLDERS: 1
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure environment
+        uses: ./.github/actions/configure-environment
+
+      - name: Restore caches
+        id: restore-cache
+        uses: ./.github/actions/restore-caches
+
+      - name: Configure Docker
+        uses: ./.github/actions/configure-docker
+        with:
+          use-cirrus: 'false'
+
+      - name: Set up GitHub CLI
+        run: gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: List open PRs
+        id: prs
+        run: |
+          prs=$(gh pr list --state open --json number --jq '.[].number')
+          echo "prs=$prs" >> $GITHUB_ENV
+
+      - name: Process PRs
+        run: |
+          for pr in $prs; do
+            echo "Checking PR #$pr"
+
+            # Fetch PR metadata
+            pr_json=$(gh api repos/${GITHUB_REPOSITORY}/pulls/$pr)
+            draft=$(echo "$pr_json" | jq -r '.draft')
+            mergeable_state=$(echo "$pr_json" | jq -r '.mergeable_state')
+            head_sha=$(echo "$pr_json" | jq -r '.head.sha')
+
+            if [ "$draft" = "true" ]; then
+              echo "PR #$pr is draft, skipping."
+              continue
+            fi
+
+            if [ "$mergeable_state" = "dirty" ]; then
+              echo "PR #$pr has merge conflicts, reporting failed check."
+              gh api repos/${GITHUB_REPOSITORY}/check-runs \
+                -X POST \
+                -F "name=Conflict Check" \
+                -F "head_sha=$head_sha" \
+                -F "status=completed" \
+                -F "conclusion=failure" \
+                -F "output[title]=Merge conflicts detected" \
+                -F "output[summary]=This PR cannot be merged due to conflicts."
+              continue
+            fi
+
+            # --- Check existing check runs ---
+            failed_checks=$(gh api repos/${GITHUB_REPOSITORY}/commits/$head_sha/check-runs \
+              --jq '.check_runs[] | select(.conclusion=="failure") | .name' || true)
+
+            if [ -n "$failed_checks" ]; then
+              echo "PR #$pr already has failing check runs: $failed_checks. Skipping."
+              continue
+            fi
+
+            # --- Run build/tests ---
+            git fetch origin pull/$pr/head:pr-$pr
+            git checkout pr-$pr
+
+            ci_failed=false
+            ./ci/test_run_all.sh || {
+                echo "PR #$pr CI script failed."
+                ci_failed=true
+            }
+            if [ "$ci_failed" = true ]; then
+              conclusion=failure
+              summary="CMake build or tests failed."
+            else
+              conclusion=success
+              summary="CMake build and tests passed."
+            fi
+
+            # set -o xtrace
+            # docker buildx build -t "$CONTAINER_NAME" $DOCKER_BUILD_CACHE_ARG --file "./ci/lint_imagefile" .
+            # CIRRUS_PR_FLAG=""
+            # if [ "${{ github.event_name }}" = "pull_request" ]; then
+            #   CIRRUS_PR_FLAG="-e CIRRUS_PR=1"
+            # fi
+            # docker run --rm $CIRRUS_PR_FLAG -v "$(pwd)":/bitcoin "$CONTAINER_NAME"
+
+            # --- Report result as a new check run ---
+            gh api repos/${GITHUB_REPOSITORY}/check-runs \
+              -X POST \
+              -F "name=CMake Build & Test" \
+              -F "head_sha=$head_sha" \
+              -F "status=completed" \
+              -F "conclusion=$conclusion" \
+              -F "output[title]=CMake Build & Test" \
+              -F "output[summary]=$summary"
+
+          done
+
