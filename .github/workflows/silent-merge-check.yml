@@ -10,6 +10,31 @@ on:
   workflow_dispatch:
 
 jobs:
+  runners:
+    name: '[meta] determine runners'
+    runs-on: ubuntu-slim
+    outputs:
+      provider: ${{ steps.runners.outputs.provider }}
+    steps:
+      - &ANNOTATION_PR_NUMBER
+        name: Annotate with pull request number
+        # This annotation is machine-readable and can be used to assign a check
+        # run to its corresponding pull request. Running in all check runs is
+        # required, because check re-runs discard the annotations of other
+        # tasks in the test suite.
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "::notice title=debug_pull_request_number_str::${{ github.event.number }}"
+          fi
+      - id: runners
+        run: |
+          if [[ "${REPO_USE_CIRRUS_RUNNERS}" == "${{ github.repository }}" ]]; then
+            echo "provider=cirrus" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Runner Selection::Using Cirrus Runners"
+          else
+            echo "provider=gha" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Runner Selection::Using GitHub-hosted runners"
+          fi
   verify-prs:
     name: 'Verify open PRs for silent merge conflicts'
     runs-on: ubuntu-latest
@@ -37,7 +62,7 @@ jobs:
       - name: Configure Docker
         uses: ./.github/actions/configure-docker
         with:
-          use-cirrus: 'false'
+          cache-provider: ${{ needs.runners.outputs.provider }}
 
       - name: Set up GitHub CLI
         run: gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
