@@ -53,7 +53,7 @@ jobs:
       - name: Process PRs
         run: |
           IFS=: read -r -a prs <<< "$prs" # Convert into to array
-          for pr in $prs; do
+          for pr in ${prs[@]}; do
             echo "Checking PR #$pr"
 
             # Fetch PR metadata
