@@ -1,4 +1,8 @@
-name: Periodic Silent Merge Check
+# Copyright (c) 2023-present The Bitcoin Core developers
+# Distributed under the MIT software license, see the accompanying
+# file COPYING or https://opensource.org/license/mit.
+
+name: Silent Merge Periodic Check
 
 on:
   schedule:
@@ -7,11 +11,15 @@ on:
 
 jobs:
   verify-prs:
+    name: 'Verify open PRs for silent merge conflicts'
     runs-on: ubuntu-latest
     permissions:
       checks: write
       pull-requests: read
       contents: read
+    env:
+      FILE_ENV: './ci/test/00_setup_env_native_previous_releases.sh'
+      DANGER_CI_ON_HOST_FOLDERS: 1
 
     steps:
       - name: Checkout repo
@@ -19,10 +27,17 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake build-essential
+      - name: Configure environment
+        uses: ./.github/actions/configure-environment
+
+      - name: Restore caches
+        id: restore-cache
+        uses: ./.github/actions/restore-caches
+
+      - name: Configure Docker
+        uses: ./.github/actions/configure-docker
+        with:
+          use-cirrus: ${{ needs.runners.outputs.use-cirrus-runners }}
 
       - name: Set up GitHub CLI
         run: gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
@@ -75,14 +90,17 @@ jobs:
             git fetch origin pull/$pr/head:pr-$pr
             git checkout pr-$pr
 
-            mkdir -p build && cd build
-            cmake ..
-            if make -j$(nproc) && ctest --output-on-failure; then
-              conclusion=success
-              summary="CMake build and tests passed."
-            else
+            ci_failed=false
+            ./ci/test_run_all.sh || {
+                echo "PR #$pr CI script failed."
+                ci_failed=true
+            }
+            if [ "$ci_failed" = true ]; then
               conclusion=failure
               summary="CMake build or tests failed."
+            else
+              conclusion=success
+              summary="CMake build and tests passed."
             fi
 
             # --- Report result as a new check run ---
@@ -96,3 +114,68 @@ jobs:
               -F "output[summary]=$summary"
 
           done
+
+      - name: Save caches
+        uses: ./.github/actions/save-caches
+        with:
+          depends-sources-cache-hit: ${{ steps.restore-cache.depends-sources-cache-hit }}
+          depends-built-cache-hit: ${{ steps.restore-cache.depends-built-cache-hit }}
+
+  previous-releases:
+    name: 'Previous releases, depends DEBUG'
+    if: contains(github.event.label.name, 'PeriodicMergeCICheck')
+    needs: runners
+    runs-on: ${{ needs.runners.outputs.use-cirrus-runners == 'true' && 'ghcr.io/cirruslabs/ubuntu-runner-amd64:24.04-md' || 'ubuntu-24.04' }}
+
+    env:
+      FILE_ENV: './ci/test/00_setup_env_native_previous_releases.sh'
+      DANGER_CI_ON_HOST_FOLDERS: 1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure environment
+        uses: ./.github/actions/configure-environment
+
+      - name: Restore caches
+        id: restore-cache
+        uses: ./.github/actions/restore-caches
+
+      - name: Configure Docker
+        uses: ./.github/actions/configure-docker
+        with:
+          use-cirrus: ${{ needs.runners.outputs.use-cirrus-runners }}
+
+      - name: CI script
+        run: ./ci/test_run_all.sh
+
+
+  lint:
+    name: 'Lint'
+    if: contains(github.event.label.name, 'PeriodicMergeCICheck')
+    needs: runners
+    runs-on: ${{ needs.runners.outputs.use-cirrus-runners == 'true' && 'ghcr.io/cirruslabs/ubuntu-runner-amd64:24.04-sm' || 'ubuntu-24.04' }}
+    timeout-minutes: 20
+    env:
+      CONTAINER_NAME: "bitcoin-linter"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Docker
+        uses: ./.github/actions/configure-docker
+        with:
+          use-cirrus: ${{ needs.runners.outputs.use-cirrus-runners }}
+
+      - name: CI script
+        run: |
+          set -o xtrace
+          docker buildx build -t "$CONTAINER_NAME" $DOCKER_BUILD_CACHE_ARG --file "./ci/lint_imagefile" .
+          CIRRUS_PR_FLAG=""
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CIRRUS_PR_FLAG="-e CIRRUS_PR=1"
+          fi
+          docker run --rm $CIRRUS_PR_FLAG -v "$(pwd)":/bitcoin "$CONTAINER_NAME"
