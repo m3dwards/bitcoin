@@ -45,7 +45,9 @@ jobs:
       - name: List open PRs
         id: prs
         run: |
+          echo "Fetching open PRs..."
           prs=$(gh pr list --state open --json number --jq '.[].number')
+          echo "Found PRs: $prs"
           echo "prs=$prs" >> $GITHUB_ENV
 
       - name: Process PRs
