@@ -37,7 +37,7 @@ jobs:
       - name: Configure Docker
         uses: ./.github/actions/configure-docker
         with:
-          use-cirrus: ${{ needs.runners.outputs.use-cirrus-runners }}
+          use-cirrus: 'false'
 
       - name: Set up GitHub CLI
         run: gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
