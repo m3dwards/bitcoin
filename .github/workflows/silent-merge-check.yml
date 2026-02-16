@@ -47,11 +47,13 @@ jobs:
         run: |
           echo "Fetching open PRs..."
           prs=$(gh pr list --state open --json number --jq '.[].number')
+          prs="$(IFS=:; echo "${prs[*]}")" # Convert newline-separated to colon-separated
           echo "Found PRs: $prs"
           echo "prs=$prs" >> $GITHUB_ENV
 
       - name: Process PRs
         run: |
+          IFS=: read -r -a prs <<< "$prs" # Convert back to array
           for pr in $prs; do
             echo "Checking PR #$pr"
 
