@@ -37,6 +37,7 @@ jobs:
           fi
   verify-prs:
     name: 'Verify open PRs for silent merge conflicts'
+    needs: [runners]
     runs-on: ubuntu-latest
     permissions:
       checks: write
