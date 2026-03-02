@@ -56,12 +56,13 @@ jobs:
           fi
 
   test-each-commit:
-    name: 'test max 6 ancestor commits'
-    runs-on: ubuntu-24.04
-    if: github.event_name == 'pull_request' && github.event.pull_request.commits != 1
-    timeout-minutes: 360  # Use maximum time, see https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idtimeout-minutes. Assuming a worst case time of 1 hour per commit, this leads to a --max-count=6 below.
+    name: 'test ancestor commits'
+    needs: runners
+    runs-on: ${{ needs.runners.outputs.provider == 'cirrus' && 'ghcr.io/cirruslabs/ubuntu-runner-amd64:24.04-md' || 'ubuntu-24.04' }}
     env:
-      MAX_COUNT: 6  # Keep in sync with name above
+      TEST_RUNNER_PORT_MIN: "14000"  # Use a larger port, to avoid colliding with CIRRUS_CACHE_HOST port 12321.
+    if: github.event_name == 'pull_request' && github.event.pull_request.commits != 1
+    timeout-minutes: 360  # Use maximum time, see https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idtimeout-minutes.
     steps:
       - name: Determine fetch depth
         run: echo "FETCH_DEPTH=$((${{ github.event.pull_request.commits }} + 2))" >> "$GITHUB_ENV"
@@ -72,25 +73,35 @@ jobs:
           fetch-depth: ${{ env.FETCH_DEPTH }}
       - name: Determine commit range
         run: |
-          # Checkout HEAD~ and find the test base commit
-          # Checkout HEAD~ because it would be wasteful to rerun tests on the PR
-          # head commit that are already run by other jobs.
+          # Checkout HEAD~ and find the test base commit.
+          # Checkout HEAD~ because it would be wasteful to rerun
+          # tests on the PR head commit that are already run
+          # by other jobs.
           git checkout HEAD~
-          # Figure out test base commit by listing ancestors of HEAD, excluding
-          # ancestors of the most recent merge commit, limiting the list to the
-          # newest MAX_COUNT ancestors, ordering it from oldest to newest, and
+          # Moreover, pull requests that contain a merge commit
+          # are generally draft pull requests that merge in other
+          # pull requests, so only check the relevant commits
+          # after the last merge commit. A merge commit could
+          # also be a subtree merge commit, which may be
+          # worthwhile to check. However, it is rare that the
+          # subtree merge commit is not the top commit (which
+          # would be skipped anyway by this task, because it is
+          # run by all other tasks). Also, `git rebase --exec`
+          # does not work on merge commits, so if this was
+          # important to check, the logic would have to be
+          # rewritten.
+          #
+          # Figure out test base commit by listing ancestors of
+          # HEAD, excluding ancestors of the most recent merge
+          # commit, ordering them from oldest to newest, and
           # taking the first one.
           #
-          # If the branch contains up to MAX_COUNT ancestor commits after the
-          # most recent merge commit, all of those commits will be tested. If it
-          # contains more, only the most recent MAX_COUNT commits will be
-          # tested.
-          #
-          # In the command below, the ^@ suffix is used to refer to all parents
-          # of the merge commit as described in:
+          # In the command below, the ^@ suffix is used to refer
+          # to all parents of the merge commit as described in:
           # https://git-scm.com/docs/git-rev-parse#_other_rev_parent_shorthand_notations
-          # and the ^ prefix is used to exclude these parents and all their
-          # ancestors from the rev-list output as described in:
+          # and the ^ prefix is used to exclude these parents
+          # and all their ancestors from the rev-list output
+          # as described in:
           # https://git-scm.com/docs/git-rev-list
           MERGE_BASE=$(git rev-list -n1 --merges HEAD)
           EXCLUDE_MERGE_BASE_ANCESTORS=
@@ -98,7 +109,7 @@ jobs:
           if test -n "$MERGE_BASE"; then
             EXCLUDE_MERGE_BASE_ANCESTORS=^${MERGE_BASE}^@
           fi
-          echo "TEST_BASE=$(git rev-list -n$((${{ env.MAX_COUNT }} + 1)) --reverse HEAD $EXCLUDE_MERGE_BASE_ANCESTORS | head -1)" >> "$GITHUB_ENV"
+          echo "TEST_BASE=$(git rev-list -n${{ github.event.pull_request.commits }} --reverse HEAD $EXCLUDE_MERGE_BASE_ANCESTORS | head -1)" >> "$GITHUB_ENV"
       - run: |
           git fetch origin "${GITHUB_BASE_REF}"
           git config user.email "ci@example.com"
@@ -227,26 +238,19 @@ jobs:
 
       - *CHECKOUT
 
-      - &SET_UP_VS
-        name: Set up VS Developer Prompt
-        shell: pwsh -Command "$PSVersionTable; $PSNativeCommandUseErrorActionPreference = $true; $ErrorActionPreference = 'Stop'; & '{0}'"
-        run: |
-          $vswherePath = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          $installationPath = & $vswherePath -latest -property installationPath
-          & "${env:COMSPEC}" /s /c "`"$installationPath\Common7\Tools\vsdevcmd.bat`" -arch=x64 -no_logo && set" | foreach-object {
-            $name, $value = $_ -split '=', 2
-            echo "$name=$value" >> $env:GITHUB_ENV
-          }
+      - &IMPORT_VS_ENV
+        name: Import Visual Studio env vars
+        run: py -3 .github/ci-windows.py "standard" github_import_vs_env
 
       - name: Get tool information
-        shell: pwsh
         run: |
-          cmake -version | Tee-Object -FilePath "cmake_version"
-          Write-Output "---"
-          msbuild -version | Tee-Object -FilePath "msbuild_version"
-          $env:VCToolsVersion | Tee-Object -FilePath "toolset_version"
+          set -o errexit -o pipefail -o xtrace -o nounset
+
+          cmake -version | tee cmake_version
+          echo '---'
+          msbuild.exe -version | tee msbuild_version
+          echo "${VCToolsVersion-}" | tee toolset_version
           py -3 --version
-          Write-Host "PowerShell version $($PSVersionTable.PSVersion.ToString())"
           bash --version
 
       - name: Using vcpkg with MSBuild
@@ -287,7 +291,8 @@ jobs:
 
       - name: Save vcpkg tools cache
         uses: actions/cache/save@v5
-        if: github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch && steps.vcpkg-tools-cache.outputs.cache-hit != 'true'
+        # Only save cache from one job as they share tools. If the matrix is expanded to jobs with unique tools, this may need amending.
+        if: github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch && steps.vcpkg-tools-cache.outputs.cache-hit != 'true' && matrix.job-type == 'standard'
         with:
           path: C:/vcpkg/downloads/tools
           key: ${{ github.job }}-vcpkg-tools-${{ github.run_id }}
@@ -418,7 +423,7 @@ jobs:
       - name: Run bitcoind.exe
         run: py -3 .github/ci-windows-cross.py print_version
 
-      - *SET_UP_VS
+      - *IMPORT_VS_ENV
 
       - name: Check executable manifests
         run: py -3 .github/ci-windows-cross.py check_manifests
