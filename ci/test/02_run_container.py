@@ -87,8 +87,8 @@ def main():
             run(["docker", "volume", "create", f"{os.environ['CONTAINER_NAME']}_{suffix}"], check=False)
 
         CI_CCACHE_MOUNT = f"type=volume,src={os.environ['CONTAINER_NAME']}_ccache,dst={os.environ['CCACHE_DIR']}"
-        CI_DEPENDS_MOUNT = f"type=volume,src={os.environ['CONTAINER_NAME']}_depends,dst={os.environ['BASE_CACHE']}"
-        CI_DEPENDS_SOURCES_MOUNT = f"type=volume,src={os.environ['CONTAINER_NAME']}_depends_sources,dst={os.environ['SOURCES_PATH']}"
+        CI_DEPENDS_MOUNT = f"type=volume,src={os.environ['CONTAINER_NAME']}_depends,dst={os.environ['DEPENDS_DIR']}/built"
+        CI_DEPENDS_SOURCES_MOUNT = f"type=volume,src={os.environ['CONTAINER_NAME']}_depends_sources,dst={os.environ['DEPENDS_DIR']}/sources"
         CI_PREVIOUS_RELEASES_MOUNT = f"type=volume,src={os.environ['CONTAINER_NAME']}_previous_releases,dst={os.environ['PREVIOUS_RELEASES_DIR']}"
         CI_BUILD_MOUNT = []
 
@@ -104,8 +104,8 @@ def main():
                 Path(create_dir).mkdir(parents=True, exist_ok=True)
 
             CI_CCACHE_MOUNT = f"type=bind,src={os.environ['CCACHE_DIR']},dst={os.environ['CCACHE_DIR']}"
-            CI_DEPENDS_MOUNT = f"type=bind,src={os.environ['BASE_CACHE']},dst={os.environ['BASE_CACHE']}"
-            CI_DEPENDS_SOURCES_MOUNT = f"type=bind,src={os.environ['SOURCES_PATH']},dst={os.environ['SOURCES_PATH']}"
+            CI_DEPENDS_MOUNT = f"type=bind,src={os.environ['BASE_CACHE']},dst={os.environ['DEPENDS_DIR']}/built"
+            CI_DEPENDS_SOURCES_MOUNT = f"type=bind,src={os.environ['SOURCES_PATH']},dst={os.environ['DEPENDS_DIR']}/sources"
             CI_PREVIOUS_RELEASES_MOUNT = f"type=bind,src={os.environ['PREVIOUS_RELEASES_DIR']},dst={os.environ['PREVIOUS_RELEASES_DIR']}"
             CI_BUILD_MOUNT = [f"--mount=type=bind,src={os.environ['BASE_BUILD_DIR']},dst={os.environ['BASE_BUILD_DIR']}"]
 
