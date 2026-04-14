@@ -17,6 +17,47 @@ runs:
           ${{ env.BASE_CACHE }}
           ${{ env.PREVIOUS_RELEASES_DIR }}
 
+    - name: Annotate Namespace cache mount misses
+      if: inputs.provider == 'namespace'
+      shell: bash
+      run: |
+        source "$FILE_ENV"
+
+        expects_depends=true
+        expects_previous_releases=false
+        if [[ -n "${NO_DEPENDS:-}" ]]; then
+          expects_depends=false
+        fi
+        if [[ "${DOWNLOAD_PREVIOUS_RELEASES:-false}" == "true" ]]; then
+          expects_previous_releases=true
+        fi
+
+        missing_labels=()
+
+        if [[ ! -d "${CCACHE_DIR}" ]] || [[ -z "$(find "${CCACHE_DIR}" -mindepth 1 -print -quit 2>/dev/null)" ]]; then
+          missing_labels+=("ccache")
+        fi
+
+        if [[ "${expects_depends}" == "true" ]]; then
+          if [[ ! -d "${SOURCES_PATH}" ]] || [[ -z "$(find "${SOURCES_PATH}" -mindepth 1 -print -quit 2>/dev/null)" ]]; then
+            missing_labels+=("depends-sources")
+          fi
+          if [[ ! -d "${BASE_CACHE}" ]] || [[ -z "$(find "${BASE_CACHE}" -mindepth 1 -print -quit 2>/dev/null)" ]]; then
+            missing_labels+=("depends-built")
+          fi
+        fi
+
+        if [[ "${expects_previous_releases}" == "true" ]]; then
+          if [[ ! -d "${PREVIOUS_RELEASES_DIR}" ]] || [[ -z "$(find "${PREVIOUS_RELEASES_DIR}" -mindepth 1 -print -quit 2>/dev/null)" ]]; then
+            missing_labels+=("previous-releases")
+          fi
+        fi
+
+        if (( ${#missing_labels[@]} > 0 )); then
+          joined_labels=$(IFS=', '; echo "${missing_labels[*]}")
+          echo "::notice title=namespace cache mount miss (${CONTAINER_NAME})::Empty restored cache mounts: ${joined_labels}"
+        fi
+
     - name: Restore Ccache cache
       if: inputs.provider == 'gha'
       id: ccache-cache
