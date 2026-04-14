@@ -26,21 +26,14 @@ runs:
         echo "BASE_BUILD_DIR=${{ runner.temp }}/build" >> "$GITHUB_ENV"
         echo "DEPENDS_DIR=${{ runner.temp }}/depends" >> "$GITHUB_ENV"
 
-        if [[ "${{ inputs.provider }}" == "namespace" ]]; then
-          cache_root="${HOME}/.cache/bitcoin-ci/${CONTAINER_NAME}"
-          mkdir -p \
-            "${cache_root}/ccache_dir" \
-            "${cache_root}/depends/built/${DEPENDS_HASH}" \
-            "${cache_root}/depends/sources/${DEPENDS_HASH}" \
-            "${cache_root}/previous_releases/${PREVIOUS_RELEASES_HASH}"
+        cache_root="${HOME}/.cache/bitcoin-ci/${CONTAINER_NAME}"
+        mkdir -p \
+          "${cache_root}/ccache_dir" \
+          "${cache_root}/depends/built/${DEPENDS_HASH}" \
+          "${cache_root}/depends/sources/${DEPENDS_HASH}" \
+          "${cache_root}/previous_releases/${PREVIOUS_RELEASES_HASH}"
 
-          echo "CCACHE_DIR=${cache_root}/ccache_dir" >> "$GITHUB_ENV"
-          echo "BASE_CACHE=${cache_root}/depends/built/${DEPENDS_HASH}" >> "$GITHUB_ENV"
-          echo "SOURCES_PATH=${cache_root}/depends/sources/${DEPENDS_HASH}" >> "$GITHUB_ENV"
-          echo "PREVIOUS_RELEASES_DIR=${cache_root}/previous_releases/${PREVIOUS_RELEASES_HASH}" >> "$GITHUB_ENV"
-        else
-          echo "CCACHE_DIR=${{ runner.temp }}/ccache_dir" >> "$GITHUB_ENV"
-          echo "BASE_CACHE=${{ runner.temp }}/depends/built" >> "$GITHUB_ENV"
-          echo "SOURCES_PATH=${{ runner.temp }}/depends/sources" >> "$GITHUB_ENV"
-          echo "PREVIOUS_RELEASES_DIR=${{ runner.temp }}/previous_releases" >> "$GITHUB_ENV"
-        fi
+        echo "CCACHE_DIR=${cache_root}/ccache_dir" >> "$GITHUB_ENV"
+        echo "BASE_CACHE=${cache_root}/depends/built/${DEPENDS_HASH}" >> "$GITHUB_ENV"
+        echo "SOURCES_PATH=${cache_root}/depends/sources/${DEPENDS_HASH}" >> "$GITHUB_ENV"
+        echo "PREVIOUS_RELEASES_DIR=${cache_root}/previous_releases/${PREVIOUS_RELEASES_HASH}" >> "$GITHUB_ENV"
