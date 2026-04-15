@@ -515,7 +515,7 @@ jobs:
 
           - name: 'fuzzer,address,undefined,integer'
             cache-tag: 'bitcoin-ci-fuzz-asan-ubsan-integer'
-            namespace-runner: 'namespace-profile-x64-linux-large'
+            namespace-runner: 'namespace-profile-x64-linux-xl'
             fallback-runner: 'ubuntu-24.04'
             timeout-minutes: 240
             file-env: './ci/test/00_setup_env_native_fuzz.sh'
@@ -550,7 +550,7 @@ jobs:
 
           - name: 'MSan, fuzz'
             cache-tag: 'bitcoin-ci-msan-fuzz'
-            namespace-runner: 'namespace-profile-x64-linux-medium'
+            namespace-runner: 'namespace-profile-x64-linux-large'
             fallback-runner: 'ubuntu-24.04'
             timeout-minutes: 150
             file-env: './ci/test/00_setup_env_native_fuzz_with_msan.sh'
