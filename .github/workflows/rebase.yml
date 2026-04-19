@@ -1,0 +1,46 @@
+name: Auto Rebase
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # every hour
+  workflow_dispatch:  # manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: master
+          fetch-depth: 0  # Full history needed for rebase
+          token: ${{ secrets.NAMESPACE_REBASE_PAT }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream and check if rebase is needed
+        id: check
+        run: |
+          git remote add upstream https://github.com/bitcoin/bitcoin.git
+          git fetch upstream master
+          if git merge-base --is-ancestor upstream/master HEAD; then
+            echo "needs_rebase=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_rebase=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Rebase onto upstream
+        if: steps.check.outputs.needs_rebase == 'true'
+        run: |
+          git rebase upstream/master
+
+      - name: Push changes
+        if: steps.check.outputs.needs_rebase == 'true'
+        run: |
+          git push --force-with-lease origin HEAD:master
