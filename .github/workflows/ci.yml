@@ -19,7 +19,7 @@ concurrency:
 
 env:
   CI_FAILFAST_TEST_LEAVE_DANGLING: 1  # GHA does not care about dangling processes and setting this variable avoids killing the CI script itself on error
-  REPO_USE_NAMESPACE_RUNNERS: 'bitcoin/bitcoin' # Use Namespace runners for this repo; other forks fall back to the free GHA runners.
+  REPO_USE_NAMESPACE_RUNNERS: 'runners-jdna/bitcoin' # Use Namespace runners for this repo; other forks fall back to the free GHA runners.
 
 defaults:
   run:
