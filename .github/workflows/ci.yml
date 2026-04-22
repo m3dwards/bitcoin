@@ -465,8 +465,7 @@ jobs:
 
           - name: '32 bit ARM'
             cache-tag: 'bitcoin-ci-32bit-arm'
-            namespace-runner: 'ubuntu-24.04-arm' # TODO: Not got armhf emulation working on Namespace's Apple ARM runners yet
-            fallback-runner: 'ubuntu-24.04-arm'
+            fallback-runner: 'ubuntu-24.04-arm' # TODO: Not got armhf emulation working on Namespace's Apple ARM runners yet
             timeout-minutes: 120
             file-env: './ci/test/00_setup_env_arm.sh'
 
