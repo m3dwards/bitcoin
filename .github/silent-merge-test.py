@@ -204,14 +204,14 @@ def main():
             log(f"PR #{pr['number']} already has failing check runs, skipping.")
             continue
 
-        latest_pass = latest_passing_check_time(pr["check_runs"])
-        if latest_pass is None:
-            log(f"PR #{pr['number']} has no passing check runs, skipping.")
-            continue
-        age = datetime.now(tz=latest_pass.tzinfo) - latest_pass
-        if age < MIN_CHECK_AGE:
-            log(f"PR #{pr['number']} latest passing check is only {fmt_duration(age)} old (minimum {fmt_duration(MIN_CHECK_AGE)}), skipping.")
-            continue
+        # latest_pass = latest_passing_check_time(pr["check_runs"])
+        # if latest_pass is None:
+        #     log(f"PR #{pr['number']} has no passing check runs, skipping.")
+        #     continue
+        # age = datetime.now(tz=latest_pass.tzinfo) - latest_pass
+        # if age < MIN_CHECK_AGE:
+        #     log(f"PR #{pr['number']} latest passing check is only {fmt_duration(age)} old (minimum {fmt_duration(MIN_CHECK_AGE)}), skipping.")
+        #     continue
 
         # Merge the PR head against current master locally. GitHub's pull/{n}/merge ref can be
         # stale, so we cannot rely on it to test against the latest master.
